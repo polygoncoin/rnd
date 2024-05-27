@@ -2,7 +2,7 @@
 /*
 MIT License 
 
-Copyright (c) 2023 Ramesh Narayan Jangid. 
+Copyright (c) 2024 Ramesh Narayan Jangid. 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the "Software"), to deal 
@@ -66,12 +66,8 @@ SOFTWARE.
  *     var_dump($arr);
  * }
  * 
- * // To search in specific Keys pattern
- * // Index the JSON file as below.
- * $JsonDecode->indexJSON();
- * 
  * // Perform search inside values of $json['data'][0]['data1']
- * // the syntax is as below to set the parameter.
+ * // the syntax is as below to set the keys.
  * $JsonDecode->load('data:0:data1');
  * 
  * // Get your searched data.
@@ -102,9 +98,9 @@ class JsonDecode
     /**
      * Temporary Stream
      *
-     * @var string
+     * @var object
      */
-    private $tempStream = '';
+    private $tempStream = null;
 
     /**
      * Array of JsonEncodeObject objects
@@ -128,13 +124,6 @@ class JsonDecode
     private $currentObject = null;
 
     /**
-     * JSON char counter.
-     *
-     * @var int
-     */
-    private $charCounter = null;
-
-    /**
      * Characters that are escaped while creating JSON.
      *
      * @var array
@@ -150,10 +139,18 @@ class JsonDecode
 
     /**
      * JSON stream indexes.
+     * Contains start and end positions for requested indexes.
      *
      * @var array
      */
     public $streamIndex = null;
+
+    /**
+     * JSON stream indexes seperated by colon.
+     *
+     * @var string
+     */
+    private $indexes = null;
 
     /**
      * JSON stream start position.
@@ -170,11 +167,12 @@ class JsonDecode
     private $_e_ = null;
 
     /**
-     * JSON stream indexes seperated by colon.
+     * JSON char counter.
+     * Starts from $_s_ till $_e_
      *
-     * @var string
+     * @var int
      */
-    private $indexes = null;
+    private $charCounter = null;
 
     /**
      * JsonEncode constructor
@@ -185,7 +183,7 @@ class JsonDecode
         $this->tempStream = fopen("php://temp", "rw+b");
         stream_copy_to_stream( $inputStream, $this->tempStream);
         fclose($inputStream);
-        rewind($this->tempStream);
+        $this->indexJSON();
     }
 
     /**
@@ -193,9 +191,8 @@ class JsonDecode
      *
      * @return bool
      */
-    public function indexJSON()
+    private function indexJSON()
     {
-        rewind($this->tempStream);
         $this->streamIndex = null;
         foreach ($this->process(true) as $keys => $val) {
             if (
@@ -216,10 +213,16 @@ class JsonDecode
         return true;
     }
 
+    /**
+     * Start processing the JSON string for a keys
+     * Perform search inside keys of JSON like $json['data'][0]['data1']
+     *
+     * @param string $indexes Key values seperated by colon.
+     * @return void
+     */
     public function load($indexes)
     {
         if (empty($indexes)) {
-            rewind($this->tempStream);
             $this->_s_ = null;
             $this->_e_ = null;
             $this->indexes = null;
@@ -273,10 +276,6 @@ class JsonDecode
         $this->charCounter = $this->_s_ !== null ? $this->_s_ : 0;
         fseek($this->tempStream, $this->charCounter, SEEK_SET);
         
-        $this->objects = [];
-        $this->currentObject = null;
-        $this->previousObjectIndex = null;
-
         for(;
             (
                 ($char = fgetc($this->tempStream)) !== false && 
@@ -385,6 +384,10 @@ class JsonDecode
                 continue;
             }
         }
+
+        $this->objects = [];
+        $this->currentObject = null;
+        $this->previousObjectIndex = null;
     }
 
     /**
@@ -644,7 +647,7 @@ class JsonDecode
     {
         $str = trim($str);
         if (!empty($str)) {
-            echo 'Invalid JSON: '.$str;
+            echo 'Invalid JSON: ' . $str;
             die;
         }
     }
@@ -810,18 +813,14 @@ foreach($JsonDecode->process() as $keys => $arr) {
     print_r($arr);
 }
 
-// // To search in specific Keys pattern
-// // Index the JSON file as below.
-// $JsonDecode->indexJSON();
+// Perform search inside values of $json['data'][0]['data1']
+// the syntax is as below to set the parameter.
+$JsonDecode->load('data:0:data1');
 
-// // Perform search inside values of $json['data'][0]['data1']
-// // the syntax is as below to set the parameter.
-// $JsonDecode->load('data:0:data1');
-
-// // Get your searched data.
-// foreach($JsonDecode->process() as $keys => $arr) {
-//     print_r($keys);
-//     print_r($arr);
-// }
+// Get your searched data.
+foreach($JsonDecode->process() as $keys => $arr) {
+    print_r($keys);
+    print_r($arr);
+}
 
 $JsonDecode = null;
