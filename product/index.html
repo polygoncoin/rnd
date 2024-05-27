@@ -1,0 +1,37 @@
+<html>
+<head>
+	<title>Agile Analytics</title>
+	<link rel="icon" href="favicon.ico">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<!-- Script -->
+	<script type="text/javascript" src="ejs_production.js"></script>
+</head>
+<body>
+	<div id="tag-id"></div>
+	<script type="text/javascript">
+		// the tempalte generation helpline on https://ejs.co.
+		var templateUrl = 'template.ejs';
+		var data = {
+			'section': [
+				{'name':'Section1'},
+				{'name':'Section2'},
+				{'name':'Section3'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+				{'name':'Section4'},
+			]
+		};
+		var str = new EJS( { url : templateUrl} ).render( data );
+		document.getElementById('tag-id').innerHTML = str;
+	</script>
+</body>
+</html>
