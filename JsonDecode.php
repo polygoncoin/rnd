@@ -66,6 +66,10 @@ SOFTWARE.
  *     var_dump($arr);
  * }
  * 
+ * // To search in specific Keys pattern
+ * // Index the JSON file as below.
+ * $JsonDecode->indexJSON();
+ * 
  * // Perform search inside values of $json['data'][0]['data1']
  * // the syntax is as below to set the keys.
  * $JsonDecode->load('data:0:data1');
@@ -183,7 +187,6 @@ class JsonDecode
         $this->tempStream = fopen("php://temp", "rw+b");
         stream_copy_to_stream( $inputStream, $this->tempStream);
         fclose($inputStream);
-        $this->indexJSON();
     }
 
     /**
@@ -812,6 +815,10 @@ foreach($JsonDecode->process() as $keys => $arr) {
     print_r($keys);
     print_r($arr);
 }
+
+// To search in specific Keys pattern
+// Index the JSON file as below.
+$JsonDecode->indexJSON();
 
 // Perform search inside values of $json['data'][0]['data1']
 // the syntax is as below to set the parameter.
