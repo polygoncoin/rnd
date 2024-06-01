@@ -211,7 +211,7 @@ class JsonDecode
      *
      * @return bool
      */
-    private function indexJSON()
+    public function indexJSON()
     {
         $this->streamIndex = null;
         foreach ($this->process(true) as $keys => $val) {
