@@ -66,6 +66,7 @@ class CacheHandler
      */
     public static function init($filePath)
     {
+        $filePath = '/' . trim(str_replace('../','',urldecode($filePath)), './');
         $fileLocation = self::$cacheLocation . $filePath;
         $modifiedTime = filemtime($fileLocation);
 
