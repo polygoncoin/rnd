@@ -30,11 +30,11 @@ SOFTWARE.
  * $sth->execute($params);
  * 
  * // For single row
- * $jsonEncode->startAssoc();
+ * $jsonEncode->startObject();
  * foreach($sth->fetch(PDO::FETCH_ASSOC) as $key => $value) {
  *    $jsonEncode->addKeyValue($key, $value);
  * }
- * $jsonEncode->endAssoc();
+ * $jsonEncode->endObject();
  * $sth->closeCursor();
  * $jsonEncode = null;
  * 
@@ -48,8 +48,8 @@ SOFTWARE.
  * $jsonEncode = null;
  * 
  * // For mixture type
- * // Array inside Associative array.
- * $jsonEncode->startAssoc();
+ * // Array inside Object.
+ * $jsonEncode->startObject();
  * foreach($sth->fetch(PDO::FETCH_ASSOC) as $key => $value) {
  *    $jsonEncode->addKeyValue($key, $value);
  * }
@@ -63,7 +63,7 @@ SOFTWARE.
  * }
  * $sth_2->closeCursor();
  * $jsonEncode->endArray();
- * $jsonEncode->endAssoc();
+ * $jsonEncode->endObject();
  * $jsonEncode = null;
  * 
  */
@@ -137,7 +137,7 @@ class JsonEncode
         $escapers = array("\\", "/", "\"", "\n", "\r", "\t", "\x08", "\x0c");
         $replacements = array("\\\\", "\\/", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b");
         $str = str_replace($escapers, $replacements, $str);
-        $this->write('"' . $str . '"');
+        return '"' . $str . '"';
     }
 
     /**
@@ -184,8 +184,8 @@ class JsonEncode
      */
     public function addKeyValue($key, $value)
     {
-        if ($this->currentObject->mode !== 'Assoc') {
-            throw new Exception('Mode should be Assoc');
+        if ($this->currentObject->mode !== 'Object') {
+            throw new Exception('Mode should be Object');
         }
         $this->write($this->currentObject->comma);
         $this->write($this->escape($key) . ':');
@@ -233,13 +233,16 @@ class JsonEncode
      * @param string $key Used while creating associative array inside an associative array and $key is the key.
      * @return void
      */
-    public function startAssoc($key = null)
+    public function startObject($key = null)
     {
         if ($this->currentObject) {
+            if ($this->currentObject->mode === 'Object' && is_null($key)) {
+                throw new Exception('Object inside an Object should be supported with a Key');
+            }
             $this->write($this->currentObject->comma);
             array_push($this->objects, $this->currentObject);
         }
-        $this->currentObject = new JsonEncodeObject('Assoc');
+        $this->currentObject = new JsonEncodeObject('Object');
         if (!is_null($key)) {
             $this->write($this->escape($key) . ':');
         }
@@ -251,7 +254,7 @@ class JsonEncode
      *
      * @return void
      */
-    public function endAssoc()
+    public function endObject()
     {
         $this->write('}');
         $this->currentObject = null;
@@ -292,8 +295,8 @@ class JsonEncode
                 case 'Array':
                     $this->endArray();
                     break;
-                case 'Assoc':
-                    $this->endAssoc();
+                case 'Object':
+                    $this->endObject();
                     break;
             }
         }
@@ -329,7 +332,7 @@ class JsonEncodeObject
     /**
      * Constructor
      *
-     * @param string $mode Values can be one among Array/Assoc
+     * @param string $mode Values can be one among Array/Object
      */
     public function __construct($mode)
     {
