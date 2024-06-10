@@ -93,7 +93,7 @@ class StreamVideo
      * 
      * @var integer
      */
-    private $chunkSize = 4 * 1024 * 1024; // Maximum 4 MB per request.
+    private $chunkSize = 4 * 1024 * 1024; // 4 MB
 
     /**
      * File details required in class.
@@ -119,7 +119,8 @@ class StreamVideo
         // Check Range header
         $headers = getallheaders();
         if (!isset($headers['Range']) && strpos($headers['Range'], 'bytes=') !== false) {
-            die('Invalid request.');
+            header("HTTP/1.1 400 Bad Request");
+            die();
         }
         // Set buffer Range
         $range = explode('=', $headers['Range'])[1];
@@ -127,7 +128,8 @@ class StreamVideo
         // Check path of file to be served
         $this->absoluteFilePath = $absoluteFilePath = $this->videosFolderLocation . $relativeFilePath;
         if (!is_file($absoluteFilePath)) {
-            die('Invalid file.');
+            header("HTTP/1.1 404 Not Found");
+            die();
         }
         //Set details of file to be served.
         // Set file name
@@ -150,10 +152,12 @@ class StreamVideo
     public function validateFile()
     {
         if (!in_array($this->fileMime, $this->supportedMimes)) {
-            die('Invalid mime.');
+            header("HTTP/1.1 400 Bad Request");
+            die();
         }
         if ($this->streamFrom >= $this->fileSize ) {
-            die('Invalid request.');
+            header("HTTP/1.1 416 Range Not Satisfiable");
+            die();
         }
     }
     
@@ -207,7 +211,11 @@ class StreamVideo
     public function streamContent()
     {
         if (!($srcStream = fopen($this->absoluteFilePath, 'rb'))) {
-            die('Could not open stream for reading');
+            if (!headers_sent() ) {
+                header_remove();
+                header("HTTP/1.1 500 Internal Server Error");
+            }
+            die();
         }
         $destStream = fopen('php://output', 'wb');
         $totalBytes = $this->streamTill - $this->streamFrom + 1;
