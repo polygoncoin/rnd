@@ -83,6 +83,18 @@ SOFTWARE.
  *     print_r($arr);
  * }
  * $JsonDecode = null;
+ * 
+ * $JsonDecode = new JsonDecode('/usr/local/var/www/rnd/test.json');
+ *
+ * // Index the JSON file as below.
+ * $JsonDecode->indexJSON();
+ * 
+ * // To transverse through array $json['data']
+ * for ($i=0, $i_count = $JsonDecode->getCount('data'); $i < $i_count; $i++) {
+ *     print_r($JsonDecode->get('data:'.$i));
+ * }
+ * 
+ * $JsonDecode = null;
  */
 /**
  * Creates Objects from JSON String.
@@ -223,6 +235,12 @@ class JsonDecode
                 for ($i=0, $iCount = count($keys); $i < $iCount; $i++) {
                     if (!isset($streamIndex[$keys[$i]])) {
                         $streamIndex[$keys[$i]] = [];
+                        if (is_numeric($keys[$i]) && !isset($streamIndex['_c_'])) {
+                            $streamIndex['_c_'] = 0;
+                        }
+                        if (is_numeric($keys[$i])) {
+                            $streamIndex['_c_']++;
+                        }
                     }
                     $streamIndex = &$streamIndex[$keys[$i]];
                 }
@@ -231,6 +249,66 @@ class JsonDecode
             }
         }
         return true;
+    }
+
+    /**
+     * Get count of array element.
+     *
+     * @param string $index Key values seperated by colon.
+     * @return integer
+     */
+    public function getCount($index)
+    {
+        $streamIndex = &$this->streamIndex;
+        foreach (explode(':', $index) as $i) {
+            if (isset($streamIndex[$i])) {
+                $streamIndex = &$streamIndex[$i];
+            } else {
+                die("Invalid index {$i}");
+            }
+        }
+        if (
+            !(
+                isset($streamIndex['_s_']) &&
+                isset($streamIndex['_e_']) &&
+                isset($streamIndex['_c_'])
+            )
+        ) {
+            echo "Invalid index '{$index}'";
+            die;
+        }
+        return $streamIndex['_c_'];
+    }
+
+    /**
+     * Pass the indexes and get whole json content belonging to indexes.
+     *
+     * @param string $index Key values seperated by colon.
+     * @return array
+     */
+    public function get($index)
+    {
+        $streamIndex = &$this->streamIndex;
+        foreach (explode(':', $index) as $i) {
+            if (isset($streamIndex[$i])) {
+                $streamIndex = &$streamIndex[$i];
+            } else {
+                die("Invalid index {$i}");
+            }
+        }
+        if (
+            isset($streamIndex['_s_']) &&
+            isset($streamIndex['_e_'])
+        ) {
+            $start = $streamIndex['_s_'];
+            $end = $streamIndex['_e_'];
+        } else {
+            echo "Invalid index '{$index}'";
+            die;
+        }
+        $length = $end - $start + 1;
+        $json = stream_get_contents($this->tempStream, $length, $start);
+        return json_decode($json, true);
     }
 
     /**
@@ -833,23 +911,13 @@ class JsonDecodeObject
 }
 
 $JsonDecode = new JsonDecode('/usr/local/var/www/rnd/test.json');
-foreach($JsonDecode->process() as $keys => $arr) {
-    print_r($keys);
-    print_r($arr);
-}
 
-// To search in specific Keys pattern
 // Index the JSON file as below.
 $JsonDecode->indexJSON();
 
-// Perform search inside values of $json['data'][0]['data1']
-// the syntax is as below to set the parameter.
-$JsonDecode->load('data:0:data1');
-
-// Get your searched data.
-foreach($JsonDecode->process() as $keys => $arr) {
-    print_r($keys);
-    print_r($arr);
+// To transverse through array $json['data']
+for ($i=0,$i_count = $JsonDecode->getCount('data'); $i<$i_count;$i++) {
+    print_r($JsonDecode->get('data:'.$i));
 }
 
 $JsonDecode = null;
