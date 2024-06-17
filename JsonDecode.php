@@ -165,11 +165,11 @@ class JsonDecode
     public $streamIndex = null;
 
     /**
-     * JSON stream indexes seperated by colon.
+     * JSON stream keys seperated by colon.
      *
      * @var string
      */
-    private $indexes = null;
+    private $keys = null;
 
     /**
      * JSON stream start position.
@@ -221,7 +221,7 @@ class JsonDecode
     /**
      * Validate JSON in stream
      *
-     * @return bool
+     * @return void
      */
     public function indexJSON()
     {
@@ -233,9 +233,9 @@ class JsonDecode
             ) {
                 $streamIndex = &$this->streamIndex;
                 for ($i=0, $iCount = count($keys); $i < $iCount; $i++) {
-                    if (!isset($streamIndex[$keys[$i]])) {
+                    if (is_numeric($keys[$i]) && !isset($streamIndex[$keys[$i]])) {
                         $streamIndex[$keys[$i]] = [];
-                        if (is_numeric($keys[$i]) && !isset($streamIndex['_c_'])) {
+                        if (!isset($streamIndex['_c_'])) {
                             $streamIndex['_c_'] = 0;
                         }
                         if (is_numeric($keys[$i])) {
@@ -248,23 +248,74 @@ class JsonDecode
                 $streamIndex['_e_'] = $val['_e_'];
             }
         }
-        return true;
+    }
+
+    /**
+     * Key exist.
+     *
+     * @param string $keys Key values seperated by colon.
+     * @return boolean
+     */
+    public function keysAreSet($keys)
+    {
+        $return = true;
+        $streamIndex = &$this->streamIndex;
+        foreach (explode(':', $keys) as $key) {
+            if (isset($streamIndex[$key])) {
+                $streamIndex = &$streamIndex[$key];
+            } else {
+                $return = false;
+                break;
+            }
+        }
+        return $return;
+    }
+
+    /**
+     * Key exist.
+     *
+     * @param string $keys Key values seperated by colon.
+     * @return boolean
+     */
+    public function keysType($keys)
+    {
+        $streamIndex = &$this->streamIndex;
+        foreach (explode(':', $keys) as $key) {
+            if (isset($streamIndex[$key])) {
+                $streamIndex = &$streamIndex[$key];
+            } else {
+                HttpResponse::return4xx(501, "Invalid key {$key}");
+                return;
+            }
+        }
+        $return = 'Object';
+        if (
+            (
+                isset($streamIndex['_s_']) &&
+                isset($streamIndex['_e_']) &&
+                isset($streamIndex['_c_'])
+            )
+        ) {
+            $return = 'Array';
+        }
+        return $return;
     }
 
     /**
      * Get count of array element.
      *
-     * @param string $index Key values seperated by colon.
+     * @param string $keys Key values seperated by colon.
      * @return integer
      */
-    public function getCount($index)
+    public function getCount($keys)
     {
         $streamIndex = &$this->streamIndex;
-        foreach (explode(':', $index) as $i) {
-            if (isset($streamIndex[$i])) {
-                $streamIndex = &$streamIndex[$i];
+        foreach (explode(':', $keys) as $key) {
+            if (isset($streamIndex[$key])) {
+                $streamIndex = &$streamIndex[$key];
             } else {
-                die("Invalid index {$i}");
+                HttpResponse::return4xx(501, "Invalid key {$key}");
+                return;
             }
         }
         if (
@@ -274,26 +325,27 @@ class JsonDecode
                 isset($streamIndex['_c_'])
             )
         ) {
-            echo "Invalid index '{$index}'";
+            echo "Invalid keys '{$keys}'";
             die;
         }
         return $streamIndex['_c_'];
     }
 
     /**
-     * Pass the indexes and get whole json content belonging to indexes.
+     * Pass the keys and get whole json content belonging to keys.
      *
-     * @param string $index Key values seperated by colon.
+     * @param string $keys Key values seperated by colon.
      * @return array
      */
-    public function get($index)
+    public function get($keys)
     {
         $streamIndex = &$this->streamIndex;
-        foreach (explode(':', $index) as $i) {
-            if (isset($streamIndex[$i])) {
-                $streamIndex = &$streamIndex[$i];
+        foreach (explode(':', $keys) as $key) {
+            if (isset($streamIndex[$key])) {
+                $streamIndex = &$streamIndex[$key];
             } else {
-                die("Invalid index {$i}");
+                HttpResponse::return4xx(501, "Invalid key {$key}");
+                return;
             }
         }
         if (
@@ -303,7 +355,7 @@ class JsonDecode
             $start = $streamIndex['_s_'];
             $end = $streamIndex['_e_'];
         } else {
-            echo "Invalid index '{$index}'";
+            echo "Invalid keys '{$keys}'";
             die;
         }
         $length = $end - $start + 1;
@@ -315,23 +367,24 @@ class JsonDecode
      * Start processing the JSON string for a keys
      * Perform search inside keys of JSON like $json['data'][0]['data1']
      *
-     * @param string $indexes Key values seperated by colon.
+     * @param string $keys Key values seperated by colon.
      * @return void
      */
-    public function load($indexes)
+    public function load($keys)
     {
-        if (empty($indexes)) {
+        if (empty($keys)) {
             $this->_s_ = null;
             $this->_e_ = null;
-            $this->indexes = null;
+            $this->keys = null;
             return;
         }
         $streamIndex = &$this->streamIndex;
-        foreach (explode(':', $indexes) as $index) {
-            if (isset($streamIndex[$index])) {
-                $streamIndex = &$streamIndex[$index];
+        foreach (explode(':', $keys) as $key) {
+            if (isset($streamIndex[$key])) {
+                $streamIndex = &$streamIndex[$key];
             } else {
-                die("Invalid index {$index}");
+                HttpResponse::return4xx(501, "Invalid key {$key}");
+                return;
             }
         }
         if (
@@ -340,9 +393,9 @@ class JsonDecode
         ) {
             $this->_s_ = $streamIndex['_s_'];
             $this->_e_ = $streamIndex['_e_'];
-            $this->indexes = $indexes;
+            $this->keys = $keys;
         } else {
-            echo "Invalid indexes '{$indexes}'";
+            echo "Invalid keys '{$keys}'";
             die;
         }
     }
@@ -909,15 +962,3 @@ class JsonDecodeObject
         $this->objectKey = !empty($objectKey) ? $objectKey : null;
     }
 }
-
-$JsonDecode = new JsonDecode('/usr/local/var/www/rnd/test.json');
-
-// Index the JSON file as below.
-$JsonDecode->indexJSON();
-
-// To transverse through array $json['data']
-for ($i=0,$i_count = $JsonDecode->getCount('data'); $i<$i_count;$i++) {
-    print_r($JsonDecode->get('data:'.$i));
-}
-
-$JsonDecode = null;
